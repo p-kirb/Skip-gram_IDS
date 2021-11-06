@@ -11,16 +11,20 @@ import pandas as pd
 ##########
 
 #writes IPs as regular expressions (subnets represented by *s)
-def submask2regex(unaltered):
-    ipWithMask = unaltered.split("/")
-    ip = ip2bin(ipWithMask[0])
+def submask2regex(seriesRow):
+    unaltered = seriesRow.values[0]
+    ipWithSources = unaltered.split(",")
+    ipWithMask = ipWithSources[0].split("/")
+
+    ip = ipWithMask[0]#ip2bin(ipWithMask[0])
 
     #trims subnet mask off and replaces with *s (if subnet mask stated)
-    if(len(ipWithMask) == 2):
-        ip = ip[:len(ip) - int(ipWithMask[1])]
-        for i in range(int(ipWithMask[1])):
-            ip+="*"
+    #if(len(ipWithMask) == 2):
+    #    ip = ip[:len(ip) - int(ipWithMask[1])]
+        #for i in range(int(ipWithMask[1])):
+        #    ip+="*"
     return ip
+
 
 
 
@@ -34,29 +38,45 @@ def ip2bin(numip):
 
 
 
-#sample honeypot data
+########
+#PROGRAM
+########
+
+#honeypot data
 path = "../hornet7Dataset/hornet7-netflow-extended/Honeypot-Cloud-DigitalOcean-Geo-1/2021-04-23_honeypot-cloud-digitalocean-geo-1_netflow-extended.csv"
 
 honeypotIPsDF = pd.read_csv(path, usecols=["SrcAddr"])          #dataframe
 
 honeypotIPsDF = honeypotIPsDF.drop_duplicates()                 #remove duplicates
-honeypotIPsSeries = honeypotIPsDF.squeeze(axis=0)
+honeypotIPsSeries = honeypotIPsDF.squeeze(axis=0)               #make series
+
+#cleaning honeypot IPs
+honeypotIPsSeries = honeypotIPsSeries.apply(submask2regex, axis=1)
+print("honeypot cleaned.")
+
+
+
 
 
 #reading blacklist
-
-#blacklist read from cURL to firehol
-blacklistIPsDF = pd.read_fwf("iplist.txt")              #dataframe
+blacklistIPsDF = pd.read_fwf("../2021-04-23/2021-04-23")              #dataframe
 blacklistIPsSeries = blacklistIPsDF.squeeze(axis=0)     #series
 
 #removes lines containing "#"
 blacklistIPsSeries = blacklistIPsSeries[blacklistIPsSeries.iloc[:,0].str.contains("#") == False]
 
-#blacklistIPsSeries = blacklistIPsSeries.apply(submask2regex)
+#transforms each IP to binary version with subnet as *s
+blacklistIPsSeries = blacklistIPsSeries.apply(submask2regex, axis=1)
+print("blacklist cleaned.")
 
-print(blacklistIPsSeries)
+#converting to sets
+blacklistSet = set(blacklistIPsSeries)
+honeypotSet = set(honeypotIPsSeries)
 
-print(ip2bin("192.168.0.0"))
-print(submask2regex("192.168.0.0/24"))
 
-
+intersection = blacklistSet.intersection(honeypotSet)
+#print(intersection)
+#print(len(intersection))
+print("unique honeypot addresses length:",len(honeypotSet))
+print("blacklist length:",len(blacklistSet))
+print("intersection length: ", len(intersection))
