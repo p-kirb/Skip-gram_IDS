@@ -1,29 +1,45 @@
 import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.cluster.hierarchy import dendrogram
+from sklearn.datasets import load_iris
+from sklearn.cluster import AgglomerativeClustering
 
 
-path = "../hornet7Dataset/hornet7-netflow-extended/Honeypot-Cloud-DigitalOcean-Geo-1/2021-04-23_honeypot-cloud-digitalocean-geo-1_netflow-extended.csv"
-
-honeypotDF = pd.read_csv(path, error_bad_lines=False)          #dataframe
-badIPsDF = pd.read_fwf("intersection.csv", header=None)
-badIPs = badIPsDF.squeeze(axis=0)               #make series
-
-#columnsToIgnore = ["SrcId", "Seq", "StartTime", "LastTime", "SrcStartTime", "SrcLastTime", "DstStartTime", "DstLastTime", "SRange", "Trans", "SrcAddr", "DstAddr"]
-
-print(badIPsDF)
-
-labels = []
-badcount = 0
-goodcount = 0
-
-#TODO: create label vector from each instance by checking its source address, if contained on the blacklist, label bad
-
-#for instance in honeypotDF:
-    #print(instance)
-    #if badIPs.str.contains(instance.loc["SrcAddr"]):
-    #    badcount += 1
-    #else:
-    #    goodcount += 1
+####################################
+#NEED TO UNDERSTAND THIS CODE BETTER
+####################################
 
 
-print("badcount: ", badcount)
-print("goodcount: ", goodcount)
+def plot_dendrogram(model, **kwargs):
+    # Create linkage matrix and then plot the dendrogram
+
+    # create the counts of samples under each node
+    counts = np.zeros(model.children_.shape[0])
+    n_samples = len(model.labels_)
+    for i, merge in enumerate(model.children_):
+        current_count = 0
+        for child_idx in merge:
+            if child_idx < n_samples:
+                current_count += 1  # leaf node
+            else:
+                current_count += counts[child_idx - n_samples]
+        counts[i] = current_count
+
+    linkage_matrix = np.column_stack(
+        [model.children_, model.distances_, counts]
+    ).astype(float)
+
+    # Plot the corresponding dendrogram
+    dendrogram(linkage_matrix, **kwargs)
+
+
+
+honeypotDF = pd.read_csv("honeypot-redundant-dropped.csv")          #dataframe
+
+model = AgglomerativeClustering(distance_threshold=0, n_clusters=None)
+model = model.fit(honeypotDF)
+plt.title("Hierarchical Clustering Dendogram")
+plot_dendrogram(model, truncate_mode="level", p=5)
+plt.xlabel("Number of instances in node (no brackets means single instance index).")
+plt.show()
