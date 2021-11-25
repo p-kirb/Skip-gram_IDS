@@ -1,6 +1,6 @@
 #!/bin/sh
 pip install pyasn
-cd ../
+cd ../../
 mkdir week_of_blacklists
 cd week_of_blacklists
 #download zip lists
@@ -31,7 +31,7 @@ rm -r 2021-04-23    2021-04-24    2021-04-25    2021-04-26    2021-04-27    2021
 mkdir zips
 mv *.zip zips
 
-cd ../SCC300HoneypotProject
+cd ../SCC300HoneypotProject/Mapping_IPs_to_Autonomous_Systems
 #downloading RIB files (used to build database to map IPs to ASNs with pyasn module)
 python3 ~/.local/bin/pyasn_util_download.py --dates-from-file dates.txt
 
@@ -48,13 +48,13 @@ python3 ~/.local/bin/pyasn_util_convert.py --bulk 2021-04-23 2021-04-29
 
 #making folder for output of python files
 mkdir freq_of_ASNs_on_blacklists
-python3 mapASes.py ../week_of_blacklists/lists/2021-04-23
-python3 mapASes.py ../week_of_blacklists/lists/2021-04-24
-python3 mapASes.py ../week_of_blacklists/lists/2021-04-25
-python3 mapASes.py ../week_of_blacklists/lists/2021-04-26
-python3 mapASes.py ../week_of_blacklists/lists/2021-04-27
-python3 mapASes.py ../week_of_blacklists/lists/2021-04-28
-python3 mapASes.py ../week_of_blacklists/lists/2021-04-29
+python3 mapASes.py ../../week_of_blacklists/lists/2021-04-23
+python3 mapASes.py ../../week_of_blacklists/lists/2021-04-24
+python3 mapASes.py ../../week_of_blacklists/lists/2021-04-25
+python3 mapASes.py ../../week_of_blacklists/lists/2021-04-26
+python3 mapASes.py ../../week_of_blacklists/lists/2021-04-27
+python3 mapASes.py ../../week_of_blacklists/lists/2021-04-28
+python3 mapASes.py ../../week_of_blacklists/lists/2021-04-29
 
 
 
