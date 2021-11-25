@@ -2,10 +2,6 @@ import pandas as pd
 
 #install pandas with "pip install pandas"
 
-
-#TODO: get submask2regex function to work when applied to blacklistIPSeries
-#TODO: find intersection of datasets
-
 ##########
 #FUNCTIONS
 ##########
