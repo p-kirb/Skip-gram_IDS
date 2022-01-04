@@ -69,16 +69,24 @@ honeypotDF = honeypotDF[~honeypotDF.Label.str.contains("Background")]
 labels = honeypotDF[['Label']]              #extracting label vector
 honeypotDF = honeypotDF.drop(['Label'], axis=1)          #removing labels from features
 
+honeypotDF = honeypotDF.drop(['DstAddr'], axis=1)          #Somehow is more accurate when ignoring IP addreses and start time??
+honeypotDF = honeypotDF.drop(['SrcAddr'], axis=1)
+honeypotDF = honeypotDF.drop(['StartTime'], axis=1)
+
+
 
 #fills all missing data with 0 currently
 honeypotDF.fillna("0", axis=0, inplace=True)
 
 #enumerating non-numerical data
 #date column just gets converted into one long number
-honeypotDF['StartTime'] = honeypotDF['StartTime'].apply(parseDate)
+
+#Commented out because somehow is more accurate when ignoring IP addreses and start time??
+
+#honeypotDF['StartTime'] = honeypotDF['StartTime'].apply(parseDate)
 #ip addresses get converted to single numbers
-honeypotDF['SrcAddr'] = honeypotDF['SrcAddr'].apply(ip2int)
-honeypotDF['DstAddr'] = honeypotDF['DstAddr'].apply(ip2int)
+#honeypotDF['SrcAddr'] = honeypotDF['SrcAddr'].apply(ip2int)
+#honeypotDF['DstAddr'] = honeypotDF['DstAddr'].apply(ip2int)
 #Dport and Sport get any hex strings to standard ints
 honeypotDF['Sport'] = honeypotDF['Sport'].apply(cleanHex)
 honeypotDF['Dport'] = honeypotDF['Dport'].apply(cleanHex)
@@ -111,7 +119,7 @@ testingLabels = labels.tail(testingCount)
 #trainingLabels.to_csv("trainingLabels.csv", index=False)
 #testingMatrix.to_csv("testingMatrix.csv", index=False)
 #testingLabels.to_csv("testingLabels.csv", index=False)
-#honeypotDF.to_csv("cleaned_honeypot.csv", index=False)
+honeypotDF.to_csv("cleaned_honeypot.csv", index=False)
 #print(honeypotDF)
 
 
