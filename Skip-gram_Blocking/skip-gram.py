@@ -41,27 +41,28 @@ honeypotDF['Dport'] = honeypotDF['Dport'].apply(cleanHex)
 
 
 
-
-#getting unique SrcAddr values
-wordsTable =  np.unique(honeypotDF[['SrcAddr']].values)
-#making a 2d array with the first column being the SrcAddr
-wordsTable = np.reshape(wordsTable, (-1, 1))
-
-#gets dataframe containing unique connection types - each connection type is distinguished by its index in this dataframe.
-connectionTypes = honeypotDF[['DstAddr', 'Dport', 'Proto']]
-print("total connections:", connectionTypes.shape[0])
-connectionTypes = connectionTypes.drop_duplicates()
-print("unique connection types:", connectionTypes.shape[0])
-
-
 print("getting unique connection types")
 #goes through every communication instance in the log and adds a connectionType entry to the corresponding SrcAddr in the wordsTable
-honeypotDF['connectionType'] = pd.factorize(pd._libs.lib.fast_zip([honeypotDF.DstAddr.values, honeypotDF.Dport.values, honeypotDF.Proto.values]))[0]
+honeypotDF['connectionType'] = pd.factorize(pd._libs.lib.fast_zip([honeypotDF.DstAddr.values, honeypotDF.Dport.values, honeypotDF.Proto.values]))[0] #enumerates the DstAddr, Dport, and Proto columns to give each unique row a unique value
+
+#Getting the indeces of where to find the sourceIP in the wordsTable list for faster lookup
+honeypotDF['IPIndex'] = honeypotDF['SrcAddr'].factorize()[0]
 
 
 honeypotDF.to_csv("cleaned_honeypot.csv", index=False)
 
 
+#getting unique SrcAddr values in 2d array
+wordsTable =  honeypotDF[['SrcAddr']].drop_duplicates().values.tolist()
+
+
+#TODO: optimise maybe? takes a while
+#loops over honeypotDF, adds the current rows connectionType to the array at the index specified by IPIndex
+#(builds the table used to feed data into network)
+for index, row in honeypotDF.iterrows():
+    wordsTable[row['IPIndex']].append(row['connectionType'])
+
+print(wordsTable)
 
 
 
