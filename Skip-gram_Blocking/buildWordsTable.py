@@ -27,6 +27,14 @@ def filterPort(dataItem):
         return dataItem
     return 9999
 
+
+def ip2int(numip):
+    binIP = ""
+    for x in numip.split('.'):
+        x = bin(int(x)+256)[3:]         #adds 256 to number (to make them all 9 bits) then removes unnecessary first 3 characters ("0b1")
+        binIP+=x
+    return int(binIP, 2)
+
 ###########################
 #PROGRAM CODE
 ###########################
@@ -53,6 +61,8 @@ honeypotDF = honeypotDF[['SrcAddr', 'DstAddr', 'Dport', 'Proto']]
 #fills all missing data with 0 currently
 honeypotDF.fillna("0", axis=0, inplace=True)
 
+#drops any observations with an IPv6 SrcAddr
+honeypotDF = honeypotDF[~honeypotDF.SrcAddr.str.contains(":")]
 
 #Sport gets any hex strings to standard ints
 honeypotDF['Dport'] = honeypotDF['Dport'].apply(cleanHex)
@@ -60,6 +70,8 @@ honeypotDF['Dport'] = honeypotDF['Dport'].apply(cleanHex)
 #filtering the uncommon ports (may be removed as there are too many unpopular ports being used that arent bad traffic)
 honeypotDF['Dport'] = honeypotDF['Dport'].apply(filterPort)
 
+#converting all SrcAddr values to ints (for easier feeding into NN)
+honeypotDF['SrcAddr'] = honeypotDF['SrcAddr'].apply(ip2int)
 
 
 print("getting unique connection types...")

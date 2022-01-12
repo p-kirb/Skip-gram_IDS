@@ -37,5 +37,15 @@ with open("words_table.csv", newline='') as file:
     r = csv.reader(file)
     wordsTable = list(r)
 
-wordsTable = list(map(int, wordsTable))
+wordsTable = [list(map(int, i)) for i in wordsTable]
+
 print(wordsTable[:1])
+
+#initialise embedding matrix - dimensions: number of addresses * number of connection types?
+#   numbers between -1 and 1 taken from uniform distribution
+
+#initialise bias and weights matrix
+#   biases set to 0
+#   weights initialised with values taken from normal distribution
+
+#also need one hot encoding of words? maybe do this step in the buildWordsTable script
