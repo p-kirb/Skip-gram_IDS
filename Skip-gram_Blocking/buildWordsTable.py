@@ -44,7 +44,7 @@ path = "../../CTU-43_bidirectional-sample/capture20110811.binetflow"
 
 
 print("reading data...")
-honeypotDF = pd.read_csv(path)#, nrows=500)
+honeypotDF = pd.read_csv(path, nrows=10000)         #only using the first 10000 rows (for testing)
 
 
 print("cleaning data...")
@@ -78,11 +78,20 @@ print("getting unique connection types...")
 #goes through every communication instance in the log and adds a connectionType entry to the corresponding SrcAddr in the wordsTable
 honeypotDF['connectionType'] = pd.factorize(pd._libs.lib.fast_zip([honeypotDF.DstAddr.values, honeypotDF.Dport.values, honeypotDF.Proto.values]))[0] #enumerates the DstAddr, Dport, and Proto columns to give each unique row a unique value
 
+#making all connectionType IDs negative so their values dont overlap with IPs
+honeypotDF['connectionType'] = -1 * honeypotDF['connectionType']
+
+#writing just the connection types and their number to a file
+connectionTypesDF = honeypotDF.drop_duplicates('connectionType')
+connectionTypesDF = connectionTypesDF[['connectionType','DstAddr', 'Dport', 'Proto']]
+connectionTypesDF.to_csv("connection_types.csv", index=False)
+
 #Getting the indeces of where to find the sourceIP in the wordsTable list for faster lookup
 honeypotDF['IPIndex'] = honeypotDF['SrcAddr'].factorize()[0]
 
-
 honeypotDF.to_csv("cleaned_honeypot.csv", index=False)
+
+
 
 
 

@@ -4,15 +4,14 @@
 #Skip-gram model
 
 #read words table csv
-#embedding matrix needs to be randomly initialised with values between 0 and 1 from a normal distribution.
+#initialise embeddings matrix
 
-
-#WHAT I WAS DOING:
-#wordsTable is read as strings so need to convert it to ints for NN input
-#need ot figure out what to do with IPv6 addresses? maybe still just convert to ints?
 
 
 import csv
+import pandas as pd
+import numpy as np
+import random as rnd
 
 ##########
 #FUNCTIONS
@@ -32,20 +31,74 @@ def ip2int(numip):
 #PROGRAM CODE
 #############
 
-
+print("Reading data...")
+#reading in wordsTable to 2d list (not dataframe because varying number of columns per row)
 with open("words_table.csv", newline='') as file:
     r = csv.reader(file)
     wordsTable = list(r)
 
 wordsTable = [list(map(int, i)) for i in wordsTable]
 
-print(wordsTable[:1])
+#reading connectionTypes into dataframe
+connectionTypes = pd.read_csv("connection_types.csv")
 
-#initialise embedding matrix - dimensions: number of addresses * number of connection types?
-#   numbers between -1 and 1 taken from uniform distribution
+uniqueSystems = len(wordsTable)
+uniqueConnectionTypes = len(connectionTypes.index)
 
+#making "sentence" for 1 hot encoding reference
+sentence = [row[0] for row in wordsTable]
+sentence = sentence + connectionTypes["connectionType"].to_list()
+
+
+
+print("\nInitialising matrices:")
+
+#making one hot encoding
+print("one hot encoding matrix...")
+oneHot = np.zeros((len(sentence), len(sentence)), int)
+np.fill_diagonal(oneHot, 1)
+
+#making embedding matrix - dimensions: (addresses + connection types) * connection types
+print("embedding matrix...")
+embeddings = np.zeros((uniqueSystems, uniqueSystems + uniqueConnectionTypes))
+for i in range(uniqueSystems):
+    for j in range(uniqueSystems + uniqueConnectionTypes):
+        embeddings[i][j] = rnd.uniform(-1,1)
+
+
+
+
+
+
+print("Training...")
+#generating training data
+batchSize = 10                  #arbitrarily chosen for now
+numSkips = 2                    #arbitrarily chosen for now
+batchStart = 0
+
+#initialise empty trainingBatch
+trainingBatch = np.zeros((batchSize, numSkips+1), int)
+
+for index in range(batchSize):
+    if(rnd.random() < 0.2):
+        #sets a random valid connection type as the target word
+        trainingBatch[index][0] = wordsTable[index+batchStart][rnd.randint(1, len(wordsTable[index+batchStart]) - 1)]
+
+    else:
+        #sets the system IP address as the target word
+        trainingBatch[index][0] = wordsTable[index+batchStart][0]
+    
+    #randomly selects the context words (from the connection types) for the selected target word
+    for c in range(numSkips):
+        trainingBatch[index][c + 1] = wordsTable[index+batchStart][rnd.randint(1, len(wordsTable[index+batchStart]) - 1)]
+batchStart = batchStart + batchSize
+
+print(trainingBatch)
+
+
+
+#TODO:
 #initialise bias and weights matrix
 #   biases set to 0
 #   weights initialised with values taken from normal distribution
 
-#also need one hot encoding of words? maybe do this step in the buildWordsTable script
