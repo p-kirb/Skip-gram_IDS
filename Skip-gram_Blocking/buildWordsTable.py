@@ -78,8 +78,6 @@ print("getting unique connection types...")
 #goes through every communication instance in the log and adds a connectionType entry to the corresponding SrcAddr in the wordsTable
 honeypotDF['connectionType'] = pd.factorize(pd._libs.lib.fast_zip([honeypotDF.DstAddr.values, honeypotDF.Dport.values, honeypotDF.Proto.values]))[0] #enumerates the DstAddr, Dport, and Proto columns to give each unique row a unique value
 
-#making all connectionType IDs negative so their values dont overlap with IPs
-honeypotDF['connectionType'] = -1 * honeypotDF['connectionType']
 
 #writing just the connection types and their number to a file
 connectionTypesDF = honeypotDF.drop_duplicates('connectionType')
