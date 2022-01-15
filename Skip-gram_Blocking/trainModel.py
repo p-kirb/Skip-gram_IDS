@@ -13,9 +13,9 @@ import pandas as pd
 import numpy as np
 import random as rnd
 
-#tensorflow 2.6.0
 import tensorflow as tf
 from tensorflow import keras
+
 
 ##########
 #FUNCTIONS
@@ -55,8 +55,8 @@ wordsTable = [list(map(int, i)) for i in wordsTable]
 #reading connectionTypes into dataframe
 connectionTypes = pd.read_csv("connection_types.csv")
 
-uniqueSystems = len(wordsTable)
-uniqueConnectionTypes = len(connectionTypes.index)
+systemsCount = len(wordsTable)
+connectionTypesCount = len(connectionTypes.index)
 
 #making "sentence" for 1 hot encoding reference
 sentence = [row[0] for row in wordsTable]
@@ -65,27 +65,13 @@ sentenceLength = len(sentence)
 
 
 
-print("\nInitialising matrices:")
 
-#making embedding matrix - dimensions: sentence length * embeddingSize
-#each row is the corresponding system/connectionType vector
-print("embedding matrix...")
-embeddings = np.zeros((len(sentence), embeddingSize))
-for i in range(len(sentence)):
-    for j in range(4):
-        embeddings[i][j] = rnd.uniform(-1,1)
-
-
-
-
-
-
-print("training matrix...")
+print("Generating training matrix...")
 #generating training data
 
-trainingTargets = []                        #will be a 2d array (each target word by its one hot vector)
-trainingContexts = []                       #will be a 3d array (each target word by the numskips by the one hot vectors)
-for i in range(uniqueSystems):              #for every unique system...
+trainingTargets = []                        #each row is a target word represented as a one hot vector (vector length is all systems + all connection types)
+trainingContexts = []                       #each row is a context word (connection type) represented as a one hot vector (vector length is all connection types)
+for i in range(systemsCount):              #for every unique system...
     for c in range(numSkips):
         if(rnd.random() < 0.2):
             #add one hot encoding of random connection type from this row
@@ -97,9 +83,8 @@ for i in range(uniqueSystems):              #for every unique system...
         
         #adding the context word (randomly chosen from current rows avaiable connection types)
         connType2 = rnd.randint(1, len(wordsTable[i]) - 1)
-        trainingContexts.append(makeOneHot(i+connType2, sentenceLength))
+        trainingContexts.append(makeOneHot(connType2, connectionTypesCount))
 
-#trainingDataset = tf.data.Dataset.from_tensor_slices((trainingTargets, trainingContexts)).batch(batchSize)
 trainingTargets = np.array(trainingTargets)
 trainingContexts = np.array(trainingContexts)
 print("made dataset")
@@ -109,18 +94,30 @@ print("made dataset")
 
 print("\nTraining model...")
 
+embeddingsInitializer = tf.keras.initializers.RandomUniform(minval=-1, maxval=1)
+
 model = keras.Sequential([
-    keras.layers.Input(shape=(len(sentence),), batch_size=batchSize, sparse=True),          #input layer (arguments may need changing)
-    keras.layers.Dense(units=embeddingSize),                                                #hidden layer (arguments may need changing)
-    keras.layers.Dense(units=len(sentence), activation="softmax")                           #softmax output layer (arguments may need changing)
+    keras.layers.Input(shape=(sentenceLength,), batch_size=batchSize, sparse=True),                 #input layer (arguments may need changing)
+    keras.layers.Dense(units=embeddingSize, kernel_initializer=embeddingsInitializer),              #hidden layer, embeddings matrix initialized to random
+    keras.layers.Dense(units=connectionTypesCount, activation="softmax")                            #softmax output layer (arguments may need changing)
 ])
 
 #loss is categorical cross entropy so provide training labels as one hot vectors
-model.compile(optimizer='Adagrad', loss=tf.keras.losses.CategoricalCrossentropy(), metrics=['categorical_accuracy'])
+model.compile(optimizer='Adagrad', loss=tf.keras.losses.CategoricalCrossentropy(), metrics=['categorical_accuracy', 'accuracy'])
 
-data = model.fit(x=trainingTargets, y=trainingContexts, batch_size = batchSize, epochs = 10)
+data = model.fit(x=trainingTargets, y=trainingContexts, batch_size = batchSize, epochs = 1)
 
-print(data)
+predictions = model(trainingTargets, training=False)
+
+wordEmbeddings = model.layers[0].get_weights()[0]           #get_weights returns array containing 2 arrays - 1st one is kernel matrix, second is bias vector (i.e. bias of each node)
+
+pd.DataFrame(wordEmbeddings).to_csv("embeddings_matrix.csv", index=False, header=False)
+
+
+#print(predictions)
+
+print(model.summary())
+
 
 #TODO:
 #set the pre-initialised embedding matrix to the weights of layer 1

@@ -44,7 +44,7 @@ path = "../../CTU-43_bidirectional-sample/capture20110811.binetflow"
 
 
 print("reading data...")
-honeypotDF = pd.read_csv(path, nrows=10000)         #only using the first 10000 rows (for testing)
+honeypotDF = pd.read_csv(path, nrows=10000)         #only using the first 20000 rows (for testing)
 
 
 print("cleaning data...")
