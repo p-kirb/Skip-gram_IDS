@@ -57,37 +57,38 @@ connectionTypes = pd.read_csv("connection_types.csv")
 
 systemsCount = len(wordsTable)
 connectionTypesCount = len(connectionTypes.index)
+print("connection types: ", connectionTypesCount)
 
 #making "sentence" for 1 hot encoding reference
 sentence = [row[0] for row in wordsTable]
 sentence = sentence + connectionTypes["connectionType"].to_list()
 sentenceLength = len(sentence)
 
-
+print("sentence length: ", sentenceLength)
 
 
 print("Generating training matrix...")
 #generating training data
 
-trainingTargets = []                        #each row is a target word represented as a one hot vector (vector length is all systems + all connection types)
-trainingContexts = []                       #each row is a context word (connection type) represented as a one hot vector (vector length is all connection types)
-for i in range(systemsCount):              #for every unique system...
-    for c in range(numSkips):
-        if(rnd.random() < 0.2):
-            #add one hot encoding of random connection type from this row
-            connType1 = rnd.randint(1, len(wordsTable[i]) - 1)
-            trainingTargets.append(makeOneHot(i+connType1, sentenceLength))
-        else:
-            #add one hot encoding of that system (hot index is just the current i value)
-            trainingTargets.append(makeOneHot(i, sentenceLength))
-        
-        #adding the context word (randomly chosen from current rows avaiable connection types)
-        connType2 = rnd.randint(1, len(wordsTable[i]) - 1)
-        trainingContexts.append(makeOneHot(connType2, connectionTypesCount))
-
-trainingTargets = np.array(trainingTargets)
-trainingContexts = np.array(trainingContexts)
-print("made dataset")
+#trainingTargets = []                        #each row is a target word represented as a one hot vector (vector length is all systems + all connection types)
+#trainingContexts = []                       #each row is a context word (connection type) represented as a one hot vector (vector length is all connection types)
+#for i in range(systemsCount):              #for every unique system...
+#    for c in range(numSkips):
+#        if(rnd.random() < 0.2):
+#            #add one hot encoding of random connection type from this row
+#            connType1 = wordsTable[i][rnd.randint(1, len(wordsTable[i]) - 1)]
+#            trainingTargets.append(makeOneHot(i+connType1, sentenceLength))
+#        else:
+#            #add one hot encoding of that system (hot index is just the current i value)
+#            trainingTargets.append(makeOneHot(i, sentenceLength))
+#        
+#        #adding the context word (randomly chosen from current rows avaiable connection types)
+#        connType2 = wordsTable[i][rnd.randint(1, len(wordsTable[i]) - 1)]
+#        trainingContexts.append(makeOneHot(connType2, connectionTypesCount))
+#
+#trainingTargets = np.array(trainingTargets)
+#trainingContexts = np.array(trainingContexts)
+#print("made dataset")
         
 
 
@@ -103,9 +104,39 @@ model = keras.Sequential([
 ])
 
 #loss is categorical cross entropy so provide training labels as one hot vectors
-model.compile(optimizer='Adagrad', loss=tf.keras.losses.CategoricalCrossentropy(), metrics=['categorical_accuracy', 'accuracy'])
+model.compile(optimizer='Adagrad', loss=tf.keras.losses.CategoricalCrossentropy())#, metrics=['categorical_accuracy', 'accuracy'])
 
-data = model.fit(x=trainingTargets, y=trainingContexts, batch_size = batchSize, epochs = 1)
+
+#test start
+
+for e in range(45000):
+    print("epoch: ", e)
+    trainingTargets = []                        #each row is a target word represented as a one hot vector (vector length is all systems + all connection types)
+    trainingContexts = []                       #each row is a context word (connection type) represented as a one hot vector (vector length is all connection types)
+
+    for i in range(batchSize):              #for every unique system...
+        recordNo = e%systemsCount
+        for c in range(numSkips):
+            if(rnd.random() < 0.2):
+                #add one hot encoding of random connection type from this row
+                connType1 = wordsTable[recordNo][rnd.randint(1, len(wordsTable[recordNo]) - 1)]
+                trainingTargets.append(makeOneHot(recordNo+connType1, sentenceLength))
+            else:
+                #add one hot encoding of that system (hot index is just the current i value)
+                trainingTargets.append(makeOneHot(recordNo, sentenceLength))
+            
+            #adding the context word (randomly chosen from current rows avaiable connection types)
+            connType2 = wordsTable[recordNo][rnd.randint(1, len(wordsTable[recordNo]) - 1)]
+            trainingContexts.append(makeOneHot(connType2, connectionTypesCount))
+
+    trainingTargets = np.array(trainingTargets)
+    trainingContexts = np.array(trainingContexts)
+    data = model.fit(x=trainingTargets, y=trainingContexts, batch_size = 8, epochs = 1)
+
+#test end
+
+#data = model.fit(x=trainingTargets, y=trainingContexts, batch_size = batchSize, epochs = 1)
+
 
 predictions = model(trainingTargets, training=False)
 

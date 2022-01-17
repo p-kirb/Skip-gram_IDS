@@ -17,6 +17,8 @@ popPorts = {20,21,22,23,25,53,67,68,69,80,110,119,123,135,136,137,138,139,143,16
 #FUNCTIONS
 ###########################
 def cleanHex(dataItem):
+    if isinstance(dataItem, int):
+        return dataItem
     if("0x" in dataItem):
         return int(dataItem[2:], 16)
     return dataItem
@@ -40,17 +42,27 @@ def ip2int(numip):
 ###########################
 
 print("program start")
-path = "../../CTU-43_bidirectional-sample/capture20110811.binetflow"
+path = "../../UNSW-NB15 - CSV Files/UNSW-NB15_"
 
+filenames = [path+"1.csv", path+"2.csv", path+"3.csv", path+"4.csv"]
 
 print("reading data...")
-honeypotDF = pd.read_csv(path, nrows=10000)         #only using the first 20000 rows (for testing)
+dfs = []
+for name in filenames:
+    df = pd.read_csv(name, index_col=None)
+    dfs.append(df)
+
+
+honeypotDF = pd.concat(dfs, axis=0, ignore_index=True)
+
+print("count: ",len(honeypotDF.index))
+#honeypotDF = pd.read_csv(path)# nrows=10000)         #only using the first 20000 rows (for testing)
 
 
 print("cleaning data...")
 
 #keeping only the relevant columns
-honeypotDF = honeypotDF[['SrcAddr', 'DstAddr', 'Dport', 'Proto']]
+honeypotDF = honeypotDF[['SrcAddr', 'DstAddr', 'Dport', 'Proto', 'Label']]
 
 #TODO: decide what to do with this
 #removing all background observations
@@ -63,6 +75,21 @@ honeypotDF.fillna("0", axis=0, inplace=True)
 
 #drops any observations with an IPv6 SrcAddr
 honeypotDF = honeypotDF[~honeypotDF.SrcAddr.str.contains(":")]
+
+#dropping rows with missing values
+honeypotDF = honeypotDF[honeypotDF["SrcAddr"].str.contains("-")==False]
+honeypotDF = honeypotDF[honeypotDF["DstAddr"].str.contains("-")==False]
+honeypotDF = honeypotDF[honeypotDF["Dport"].str.contains("-")==False]
+honeypotDF = honeypotDF[honeypotDF["Proto"].str.contains("-")==False]
+
+#dropping rows with attacks (for training)
+honeypotDF = honeypotDF[honeypotDF["Label"] == 0]
+
+honeypotDF = honeypotDF[['SrcAddr', 'DstAddr', 'Dport', 'Proto']]
+
+
+
+
 
 #Sport gets any hex strings to standard ints
 honeypotDF['Dport'] = honeypotDF['Dport'].apply(cleanHex)
