@@ -82,10 +82,8 @@ honeypotDF = honeypotDF[honeypotDF["DstAddr"].str.contains("-")==False]
 honeypotDF = honeypotDF[honeypotDF["Dport"].str.contains("-")==False]
 honeypotDF = honeypotDF[honeypotDF["Proto"].str.contains("-")==False]
 
-#dropping rows with attacks (for training)
-honeypotDF = honeypotDF[honeypotDF["Label"] == 0]
 
-honeypotDF = honeypotDF[['SrcAddr', 'DstAddr', 'Dport', 'Proto']]
+
 
 
 
@@ -114,6 +112,10 @@ connectionTypesDF.to_csv("connection_types.csv", index=False)
 #Getting the indeces of where to find the sourceIP in the wordsTable list for faster lookup
 honeypotDF['IPIndex'] = honeypotDF['SrcAddr'].factorize()[0]
 
+honeypotDF.to_csv("cleaned_honeypot-with_attacks.csv", index = False)
+
+#dropping rows with attacks (for training)
+honeypotDF = honeypotDF[honeypotDF["Label"] == 0]
 honeypotDF.to_csv("cleaned_honeypot.csv", index=False)
 
 
@@ -125,7 +127,7 @@ print("Building words table...")
 #getting unique SrcAddr values in 2d array
 wordsTable =  honeypotDF[['SrcAddr']].drop_duplicates().values.tolist()
 
-#TODO: optimise maybe? takes a long time
+#TODO: optimise maybe? takes a long time - can drop all columns apart from IPIndex and connectionType
 #loops over honeypotDF, adds the current rows connectionType to the array at the index specified by IPIndex
 #(builds the table used to feed data into network)
 for index, row in honeypotDF.iterrows():

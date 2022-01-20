@@ -9,6 +9,7 @@
 
 
 import csv
+from locale import normalize
 import pandas as pd
 import numpy as np
 import random as rnd
@@ -42,7 +43,9 @@ def makeOneHot(index, sentenceLength):
 
 batchSize = 8                   #optimum from paper
 numSkips = 2                    #optimum from paper
-embeddingSize = 4
+embedding_dim = 4
+numNegSamples = 4
+
 
 print("Reading data...")
 #reading in wordsTable to 2d list (not dataframe because varying number of columns per row)
@@ -51,6 +54,7 @@ with open("words_table.csv", newline='') as file:
     wordsTable = list(r)
 
 wordsTable = [list(map(int, i)) for i in wordsTable]
+
 
 #reading connectionTypes into dataframe
 connectionTypes = pd.read_csv("connection_types.csv")
@@ -62,33 +66,14 @@ print("connection types: ", connectionTypesCount)
 #making "sentence" for 1 hot encoding reference
 sentence = [row[0] for row in wordsTable]
 sentence = sentence + connectionTypes["connectionType"].to_list()
+pd.DataFrame(sentence).to_csv("metadata.csv", index=False, header=False)
+
+
 sentenceLength = len(sentence)
 
 print("sentence length: ", sentenceLength)
 
 
-#print("Generating training matrix...")
-#generating training data
-
-#trainingTargets = []                        #each row is a target word represented as a one hot vector (vector length is all systems + all connection types)
-#trainingContexts = []                       #each row is a context word (connection type) represented as a one hot vector (vector length is all connection types)
-#for i in range(systemsCount):              #for every unique system...
-#    for c in range(numSkips):
-#        if(rnd.random() < 0.2):
-#            #add one hot encoding of random connection type from this row
-#            connType1 = wordsTable[i][rnd.randint(1, len(wordsTable[i]) - 1)]
-#            trainingTargets.append(makeOneHot(i+connType1, sentenceLength))
-#        else:
-#            #add one hot encoding of that system (hot index is just the current i value)
-#            trainingTargets.append(makeOneHot(i, sentenceLength))
-#        
-#        #adding the context word (randomly chosen from current rows avaiable connection types)
-#        connType2 = wordsTable[i][rnd.randint(1, len(wordsTable[i]) - 1)]
-#        trainingContexts.append(makeOneHot(connType2, connectionTypesCount))
-#
-#trainingTargets = np.array(trainingTargets)
-#trainingContexts = np.array(trainingContexts)
-#print("made dataset")
 
 print("generating negative samples")
 negativeSamples = []
@@ -98,27 +83,46 @@ for s in range(systemsCount):
         if(not c in wordsTable[s]):
             negativeSamples[s].append(c)
 
-#print("negative samples: ", negativeSamples)
-        
-
-
 
 print("\nTraining model...")
 
-embeddingsInitializer = tf.keras.initializers.RandomUniform(minval=-1, maxval=1)
+embeddingsInitializer = keras.initializers.RandomUniform(minval=-1, maxval=1)
+denseInitializer = keras.initializers.RandomNormal()
 
-model = keras.Sequential([
-    keras.layers.Input(shape=(sentenceLength,), batch_size=batchSize, sparse=True),                 #input layer (arguments may need changing)
-    keras.layers.Dense(units=embeddingSize, kernel_initializer=embeddingsInitializer),              #hidden layer, embeddings matrix initialized to random
-    keras.layers.Dense(units=connectionTypesCount, activation="softmax")                            #softmax output layer (arguments may need changing)
-])
+class Word2Vec(tf.keras.Model):
+  def __init__(self, vocab_size, embedding_dim):
+    super(Word2Vec, self).__init__()
+    self.target_embedding = keras.layers.Embedding(vocab_size,
+                                      embedding_dim,
+                                      name="w2v_embedding",
+                                      embeddings_initializer="uniform",
+                                      input_length=numNegSamples+1)
 
+
+    self.context_embedding = keras.layers.Embedding(vocab_size,
+                                       embedding_dim,
+                                       input_length=numNegSamples+1)
+
+  def call(self, pair):
+    target, context = pair
+    word_emb = self.target_embedding(target)
+    context_emb = self.context_embedding(context)
+    dots = tf.einsum('ikm, ikm-> ik', word_emb, context_emb)
+    cos = tf.math.l2_normalize(dots)
+    #tf.print(dots)
+    return cos
+
+def custom_loss(x_logit, y_true):
+    x_logit = tf.cast(x_logit, tf.float32)
+    return tf.nn.sigmoid_cross_entropy_with_logits(logits=x_logit, labels=y_true)
+
+model = Word2Vec(sentenceLength, embedding_dim)
 #loss is categorical cross entropy so provide training labels as one hot vectors
-model.compile(optimizer='Adagrad', loss=tf.keras.losses.CategoricalCrossentropy())#, metrics=['categorical_accuracy', 'accuracy'])
+model.compile(optimizer='Adagrad', loss=keras.losses.MeanSquaredError())#, metrics=['categorical_accuracy', 'accuracy'])
 
 
 #test start
-numNegSamples = 4
+recordNo=0
 
 for e in range(90000):
     print("epoch: ", e)
@@ -128,65 +132,69 @@ for e in range(90000):
     counter = 0
 
     for i in range(batchSize):              #loops through 
-        recordNo = (e+i)%systemsCount
         for c in range(numSkips):
+            trainingTargets.append([])
             if(rnd.random() < 0.2):
                 #add one hot encoding of random connection type from this row
                 connType1 = wordsTable[recordNo][rnd.randint(1, len(wordsTable[recordNo]) - 1)]                 #gets the number of a random connection type from that row
                 #trainingTargets.append(makeOneHot(recordNo+connType1, sentenceLength))
-
-                trainingTargets.append(makeOneHot(recordNo+connType1, sentenceLength))
+                for f in range(numNegSamples+1):
+                    trainingTargets[counter].append(systemsCount+connType1)
             else:
                 #add one hot encoding of that system (hot index is just the current i value)
                 #trainingTargets.append(makeOneHot(recordNo, sentenceLength))
-
-                trainingTargets.append(makeOneHot(recordNo, sentenceLength))
+                for f in range(numNegSamples+1):
+                    trainingTargets[counter].append(recordNo)
 
             #adding a positive sample
             trainingContexts.append([])         #make contexts list 2d
             labels.append([])
             #adding the context word (randomly chosen from current rows avaiable connection types)
             connType2 = wordsTable[recordNo][rnd.randint(1, len(wordsTable[recordNo]) - 1)]
-            trainingContexts[counter].append(makeOneHot(connType2, connectionTypesCount))
+            trainingContexts[counter].append(systemsCount+connType2)
             labels[counter].append(1)
 
             #adding negative samples
             for n in range(numNegSamples):
-                negCon = negativeSamples[recordNo][rnd.randint(0, len(negativeSamples[recordNo]))]
-                trainingContexts[counter].append(makeOneHot(negCon, connectionTypesCount))
-                labels[counter].append(0)
+                negCon = negativeSamples[recordNo][rnd.randint(0, len(negativeSamples[recordNo])-1)]
+                trainingContexts[counter].append(systemsCount+negCon)
+                labels[counter].append(-1)
 
             counter = counter + 1
+        recordNo = (recordNo + 1) % systemsCount
             
 
-    print("Training targets: ", trainingTargets)
-    print("Training contexts: ", trainingContexts)
-    print("labels: ", labels)
+
+    #print("labels: ", labels)
     trainingTargets = np.array(trainingTargets)
+    print("targets shape: ", trainingTargets.shape)
     trainingContexts = np.array(trainingContexts)
+    #print("Training targets: ", trainingTargets)
+    print("contexts shape: ", trainingContexts.shape)
     labels = np.array(labels)
+    BUFFER_SIZE = 10000
     dataset = tf.data.Dataset.from_tensor_slices(((trainingTargets, trainingContexts), labels))
-    data = model.fit(dataset, batch_size = 8, epochs = 1)
+    dataset = dataset.shuffle(BUFFER_SIZE).batch(batchSize*2, drop_remainder=False)
+    #print("dataset: ", dataset)
+    data = model.fit(dataset, epochs = 1)#batch_size = 16)
 
 #test end
 
 #data = model.fit(x=trainingTargets, y=trainingContexts, batch_size = batchSize, epochs = 1)
 
 
-predictions = model(trainingTargets, training=False)
+#predictions = model(trainingTargets, training=False)
 
-wordEmbeddings = model.layers[0].get_weights()[0]           #get_weights returns array containing 2 arrays - 1st one is kernel matrix, second is bias vector (i.e. bias of each node)
+wordEmbeddings = model.get_layer("w2v_embedding").get_weights()[0]           #get_weights returns array containing 2 arrays - 1st one is kernel matrix, second is bias vector (i.e. bias of each node)
 
 pd.DataFrame(wordEmbeddings).to_csv("embeddings_matrix.csv", index=False, header=False)
+
+
+#hiddenEmbeddings = model.get_layer("hid").get_weights()[0]
+
+#pd.DataFrame(wordEmbeddings).to_csv("hiddenEmbeddings_matrix.csv", index=False, header=False)
 
 
 #print(predictions)
 
 print(model.summary())
-
-
-#TODO:
-#set the pre-initialised embedding matrix to the weights of layer 1
-#initialise bias and weights matrix
-#   biases set to 0
-#   weights initialised with values taken from normal distribution
