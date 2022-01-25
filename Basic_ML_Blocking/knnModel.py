@@ -1,7 +1,7 @@
 import pandas as pd
 #Decimal used for large decimal numbers
 from decimal import Decimal
-from scipy.sparse import data
+#from scipy.sparse import data
 from sklearn.neighbors import KNeighborsClassifier
 
 ##########

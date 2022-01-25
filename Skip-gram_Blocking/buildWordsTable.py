@@ -107,16 +107,16 @@ honeypotDF['connectionType'] = pd.factorize(pd._libs.lib.fast_zip([honeypotDF.Ds
 #writing just the connection types and their number to a file
 connectionTypesDF = honeypotDF.drop_duplicates('connectionType')
 connectionTypesDF = connectionTypesDF[['connectionType','DstAddr', 'Dport', 'Proto']]
-connectionTypesDF.to_csv("connection_types.csv", index=False)
+connectionTypesDF.to_csv("data/connection_types.csv", index=False)
 
 #Getting the indeces of where to find the sourceIP in the wordsTable list for faster lookup
 honeypotDF['IPIndex'] = honeypotDF['SrcAddr'].factorize()[0]
 
-honeypotDF.to_csv("cleaned_honeypot-with_attacks.csv", index = False)
+honeypotDF.to_csv("data/cleaned_honeypot-with_attacks.csv", index = False)
 
 #dropping rows with attacks (for training)
 honeypotDF = honeypotDF[honeypotDF["Label"] == 0]
-honeypotDF.to_csv("cleaned_honeypot.csv", index=False)
+honeypotDF.to_csv("data/cleaned_honeypot.csv", index=False)
 
 
 
@@ -133,7 +133,7 @@ wordsTable =  honeypotDF[['SrcAddr']].drop_duplicates().values.tolist()
 for index, row in honeypotDF.iterrows():
     wordsTable[row['IPIndex']].append(row['connectionType'])
 
-with open("words_table.csv", "w") as file:
+with open("data/words_table.csv", "w") as file:
     w = csv.writer(file)
     w.writerows(wordsTable)
 

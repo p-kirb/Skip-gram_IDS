@@ -49,7 +49,7 @@ numNegSamples = 4
 
 print("Reading data...")
 #reading in wordsTable to 2d list (not dataframe because varying number of columns per row)
-with open("words_table.csv", newline='') as file:
+with open("data/words_table.csv", newline='') as file:
     r = csv.reader(file)
     wordsTable = list(r)
 
@@ -57,7 +57,7 @@ wordsTable = [list(map(int, i)) for i in wordsTable]
 
 
 #reading connectionTypes into dataframe
-connectionTypes = pd.read_csv("connection_types.csv")
+connectionTypes = pd.read_csv("data/connection_types.csv")
 
 systemsCount = len(wordsTable)
 connectionTypesCount = len(connectionTypes.index)
@@ -66,7 +66,7 @@ print("connection types: ", connectionTypesCount)
 #making "sentence" for 1 hot encoding reference
 sentence = [row[0] for row in wordsTable]
 sentence = sentence + connectionTypes["connectionType"].to_list()
-pd.DataFrame(sentence).to_csv("metadata.csv", index=False, header=False)
+pd.DataFrame(sentence).to_csv("data/metadata.csv", index=False, header=False)
 
 
 sentenceLength = len(sentence)
@@ -106,7 +106,7 @@ class Word2Vec(tf.keras.Model):
   def call(self, pair):
     target, context = pair
     word_emb = self.target_embedding(target)
-    context_emb = self.context_embedding(context)
+    context_emb = self.target_embedding(context)
     dots = tf.einsum('ikm, ikm-> ik', word_emb, context_emb)
     cos = tf.math.l2_normalize(dots)
     #tf.print(dots)
@@ -118,13 +118,13 @@ def custom_loss(x_logit, y_true):
 
 model = Word2Vec(sentenceLength, embedding_dim)
 #loss is categorical cross entropy so provide training labels as one hot vectors
-model.compile(optimizer='Adagrad', loss=keras.losses.MeanSquaredError())#, metrics=['categorical_accuracy', 'accuracy'])
+model.compile(optimizer='Adagrad', loss=keras.losses.LogCosh())#, metrics=['categorical_accuracy', 'accuracy'])
 
 
 #test start
 recordNo=0
 
-for e in range(90000):
+for e in range(180000):
     print("epoch: ", e)
     trainingTargets = []                        #each row is a target word represented as its integer index in "sentence"
     trainingContexts = []                       #each row is a list of context words (connection type) represented as their integer indeces in "sentence"
@@ -167,10 +167,10 @@ for e in range(90000):
 
     #print("labels: ", labels)
     trainingTargets = np.array(trainingTargets)
-    print("targets shape: ", trainingTargets.shape)
+    #print("targets shape: ", trainingTargets.shape)
     trainingContexts = np.array(trainingContexts)
     #print("Training targets: ", trainingTargets)
-    print("contexts shape: ", trainingContexts.shape)
+    #print("contexts shape: ", trainingContexts.shape)
     labels = np.array(labels)
     BUFFER_SIZE = 10000
     dataset = tf.data.Dataset.from_tensor_slices(((trainingTargets, trainingContexts), labels))
@@ -187,7 +187,7 @@ for e in range(90000):
 
 wordEmbeddings = model.get_layer("w2v_embedding").get_weights()[0]           #get_weights returns array containing 2 arrays - 1st one is kernel matrix, second is bias vector (i.e. bias of each node)
 
-pd.DataFrame(wordEmbeddings).to_csv("embeddings_matrix.csv", index=False, header=False)
+pd.DataFrame(wordEmbeddings).to_csv("data/embeddings_matrix.csv", index=False, header=False)
 
 
 #hiddenEmbeddings = model.get_layer("hid").get_weights()[0]

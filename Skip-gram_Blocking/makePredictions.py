@@ -5,11 +5,11 @@ import math
 #for every observation, calculate the cosine similarity of system and the connection type being used
 #if the cosine similarity > 0, is anomoly
 
-sentence = pd.read_csv("metadata.csv", header=None).to_numpy()
+sentence = pd.read_csv("data/metadata.csv", header=None).to_numpy()
 
-embeddings = pd.read_csv("embeddings_matrix.csv", header=None).to_numpy()
+embeddings = pd.read_csv("data/embeddings_matrix.csv", header=None).to_numpy()
 
-observations = pd.read_csv("cleaned_honeypot-with_attacks.csv")
+observations = pd.read_csv("data/cleaned_honeypot-with_attacks.csv")
 
 connTypesStart = observations["IPIndex"].max() + 1          #connection types embeddings start immidiately after systems embeddings
 
@@ -46,7 +46,7 @@ observations = observations[['SrcAddr', 'connectionType', 'IPIndex', 'Label']]
 
 observations['Prediction'] = observations.apply(predict, axis=1)
 
-observations[['Label', 'Prediction']].to_csv("predictions.csv", index=False)
+observations[['Label', 'Prediction']].to_csv("data/predictions.csv", index=False)
 
 
 
@@ -54,10 +54,17 @@ truths = observations['Label'].to_numpy()
 predictions = observations['Prediction'].to_numpy()
 
 correct = 0
+attacks = 0
+correctAttacks = 0
 for i in range(len(truths)):
+    if(truths[i] == 1):
+        attacks = attacks + 1
     if(truths[i] == predictions[i]):
         correct = correct + 1
+        if(truths[i] == 1):
+            correctAttacks = correctAttacks+1
 
 print("Accuracy: ", correct/len(truths))
+print("Precision: ", correctAttacks/attacks)
 
 
