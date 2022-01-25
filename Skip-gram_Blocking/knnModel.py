@@ -10,6 +10,22 @@ from sklearn.neighbors import KNeighborsClassifier
 #make predictions on test data
 #compare real labels of test data with predictions
 
+def ip2int(numip):
+    if(":" in numip):                   #currently just sets any IPv6 addresses to 0
+        return 0
+    binIP = ""
+    for x in numip.split('.'):
+        x = bin(int(x)+256)[3:]         #adds 256 to number (to make them all 9 bits) then removes unnecessary first 3 characters ("0b1")
+        binIP+=x
+    return int(binIP, 2)
+
+def cleanHex(dataItem):
+    if(isinstance(dataItem, str)):
+        if("0x" in dataItem):
+            return int(dataItem[2:], 16)
+    return dataItem
+
+
 
 path = "../../UNSW-NB15 - CSV Files/UNSW-NB15_"
 
@@ -23,6 +39,12 @@ for name in filenames:
 
 
 honeypotDF = pd.concat(dfs, axis=0, ignore_index=True)
+
+honeypotDF['SrcAddr'] = honeypotDF['SrcAddr'].apply(ip2int)
+honeypotDF['DstAddr'] = honeypotDF['DstAddr'].apply(ip2int)
+
+honeypotDF['sport'] = honeypotDF['sport'].apply(cleanHex)
+honeypotDF['Dport'] = honeypotDF['Dport'].apply(cleanHex)
 
 groundTruths = honeypotDF["Label"]
 honeypotDF = honeypotDF.drop(['Label'], axis=1)          #removing labels from features
