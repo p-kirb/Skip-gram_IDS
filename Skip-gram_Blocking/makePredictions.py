@@ -5,6 +5,9 @@ import math
 #for every observation, calculate the cosine similarity of system and the connection type being used
 #if the cosine similarity > 0, is anomoly
 
+print("program start: makePredictions")
+
+
 sentence = pd.read_csv("data/metadata.csv", header=None).to_numpy()
 
 embeddings = pd.read_csv("data/embeddings_matrix.csv", header=None).to_numpy()
@@ -14,6 +17,7 @@ observations = pd.read_csv("data/cleaned_honeypot-with_attacks.csv")
 connTypesStart = observations["IPIndex"].max() + 1          #connection types embeddings start immidiately after systems embeddings
 
 print(connTypesStart)
+print("Dataset length: ", len(observations.index))
 
 def predict(row):
     similarity = computeSimilarity(embeddings[row["IPIndex"]], embeddings[connTypesStart + row["connectionType"]])

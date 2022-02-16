@@ -17,10 +17,11 @@ popPorts = {20,21,22,23,25,53,67,68,69,80,110,119,123,135,136,137,138,139,143,16
 #FUNCTIONS
 ###########################
 def cleanHex(dataItem):
-    if isinstance(dataItem, int):
-        return dataItem
-    if("0x" in dataItem):
-        return int(dataItem[2:], 16)
+    if(isinstance(dataItem, str)):
+        if("0x" in dataItem):
+            return int(dataItem[2:], 16)
+        else:
+            return 9999                         #rows with missing values get returned as 9999
     return dataItem
 
 #filters the destination ports so only the most popular ports (popPorts) are included - if not popular port then set to 9999
@@ -41,7 +42,7 @@ def ip2int(numip):
 #PROGRAM CODE
 ###########################
 
-print("program start")
+print("program start: buildWordsTable")
 path = "../../UNSW-NB15 - CSV Files/UNSW-NB15_"
 
 filenames = [path+"1.csv", path+"2.csv", path+"3.csv", path+"4.csv"]
@@ -76,11 +77,12 @@ honeypotDF.fillna("0", axis=0, inplace=True)
 #drops any observations with an IPv6 SrcAddr
 honeypotDF = honeypotDF[~honeypotDF.SrcAddr.str.contains(":")]
 
+
 #dropping rows with missing values
-honeypotDF = honeypotDF[honeypotDF["SrcAddr"].str.contains("-")==False]
-honeypotDF = honeypotDF[honeypotDF["DstAddr"].str.contains("-")==False]
-honeypotDF = honeypotDF[honeypotDF["Dport"].str.contains("-")==False]
-honeypotDF = honeypotDF[honeypotDF["Proto"].str.contains("-")==False]
+#honeypotDF = honeypotDF[honeypotDF["SrcAddr"].str.contains("-")==False]
+#honeypotDF = honeypotDF[honeypotDF["DstAddr"].str.contains("-")==False]
+#honeypotDF = honeypotDF[honeypotDF["Dport"].str.contains("-")==False]
+#honeypotDF = honeypotDF[honeypotDF["Proto"].str.contains("-")==False]
 
 
 

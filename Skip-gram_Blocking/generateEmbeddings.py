@@ -46,6 +46,7 @@ numSkips = 2                    #optimum from paper
 embedding_dim = 4
 numNegSamples = 4
 
+print("program start: generateEmbeddings")
 
 print("Reading data...")
 #reading in wordsTable to 2d list (not dataframe because varying number of columns per row)
@@ -112,9 +113,6 @@ class Word2Vec(tf.keras.Model):
     #tf.print(dots)
     return cos
 
-def custom_loss(x_logit, y_true):
-    x_logit = tf.cast(x_logit, tf.float32)
-    return tf.nn.sigmoid_cross_entropy_with_logits(logits=x_logit, labels=y_true)
 
 model = Word2Vec(sentenceLength, embedding_dim)
 #loss is categorical cross entropy so provide training labels as one hot vectors
