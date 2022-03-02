@@ -6,6 +6,9 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn import tree
 from sklearn.metrics import precision_score
 
+import gc
+import sys
+
 #read in whole dataset.
 #read in the skipgram predicted labels.
 #replace real labels with skipgram predictions.
@@ -50,7 +53,14 @@ for name in filenames:
 
 honeypotDF = pd.concat(dfs, axis=0, ignore_index=True)
 
+for i in dfs:
+    del i
+del dfs
+del df
+gc.collect()
 
+
+print("cleaning data...")
 
 honeypotDF['SrcAddr'] = honeypotDF['SrcAddr'].apply(ip2int)
 honeypotDF['DstAddr'] = honeypotDF['DstAddr'].apply(ip2int)
@@ -70,41 +80,94 @@ for column in honeypotDF:
 
 honeypotDF = honeypotDF.fillna("0", axis=0)
 
-#print(honeypotDF)
+#print("total samples: ", len(honeypotDF.index))
+
+print("reached point 1")
+
+groundTruths = honeypotDF["Label"].tolist()
+honeypotDF = honeypotDF.drop(['attack_cat'], axis=1)          #removing attact types (information relates to label)
+
+print("reached point 2")
+
+#splitting into training and testing
+goodSamples = honeypotDF[honeypotDF["Label"] == 0]     #isolating benign samples
+malSamples = honeypotDF[honeypotDF["Label"] == 1]
+
+del honeypotDF
+gc.collect()
+
+print("reached point 3")
+
+goodSplitIndex = round(0.8 * len(goodSamples.index))
+malSplitIndex = round(0.8 * len(malSamples.index))
+
+print("reached point 4")
+
+trainingGood = goodSamples.head(goodSplitIndex)
+testingGood = goodSamples.tail(len(goodSamples.index) - goodSplitIndex)
+
+print("reached point 5")
+
+del goodSamples                 #cleanup
+
+trainingMal = malSamples.head(malSplitIndex)
+testingMal = malSamples.tail(len(malSamples.index) - malSplitIndex)
+
+print("reached point 6")
+
+del malSamples                  #cleanup
+gc.collect()
+print("reached point 7")
+
+trainingMatrix = pd.concat([trainingGood, trainingMal]).sample(frac=1)      #combines the 2 matrices and shuffles
+
+del trainingGood, trainingMal
+gc.collect()
+
+print("reached point 8")
+
+testingMatrix = pd.concat([testingGood, testingMal]).sample(frac=1)
+
+del testingGood, testingMal
+gc.collect()
+
+print("reached point 9")
+
+trainingMatrix = trainingMatrix.drop(['Label'], axis=1)          #removing labels from training matrix
 
 
 
-groundTruths = honeypotDF["Label"]
-honeypotDF = honeypotDF.drop(['Label'], axis=1)          #removing labels from features
-honeypotDF = honeypotDF.drop(['attack_cat'], axis=1)          #removing labels from features
+#fetching labels
+predictions = pd.read_csv("data/predictions.csv")               #the predictions made by the skip gram model, to be used here as labels for training
+trainingLabels = predictions["Prediction"].tolist()
+
+del predictions
+gc.collect()
 
 
+print("training observations: ", len(trainingMatrix.index))
+print("training labels: ", len(trainingLabels))
+#print("labels: ", len(trainingLabels))
 
 
-predictions = pd.read_csv("data/predictions.csv")
-newLabels = predictions["Prediction"]
+testingLabels = testingMatrix["Label"].tolist()
+testingMatrix = testingMatrix.drop(["Label"], axis=1)
 
+print("testing observations: ", len(testingMatrix.index))
+print("testing labels: ", len(testingLabels))
 
-trainingCount = round(len(honeypotDF.index) * 0.85)    #85% is training data
-testingCount = len(honeypotDF.index) - trainingCount
-
-
-trainingMatrix = honeypotDF.head(trainingCount)
-trainingLabels = newLabels.head(trainingCount)
-
-print("observations: ", len(trainingMatrix))
-print("labels: ", len(trainingLabels))
-
-testingMatrix = honeypotDF.tail(testingCount)
-testingLabels = groundTruths.tail(testingCount)
-
+name, obj = None, None
+for name, obj in locals().items():
+    print(name, ":\t\t\t", sys.getsizeof(obj))
 
 #training model
+print("training model")
 #model = KNeighborsClassifier(n_neighbors=10)
 #model.fit(trainingMatrix, trainingLabels)
 model = tree.DecisionTreeClassifier()
 model.fit(trainingMatrix, trainingLabels)
 
+print("predicting")
 #predicting
 predictions = model.predict(testingMatrix)
 
@@ -113,7 +176,7 @@ predictions = model.predict(testingMatrix)
 correctPredictions = sum(predictions == testingLabels)
 #correctPredictions = sum(predictions == "Background")           #accuracy if all observations were just labeled as background
 print("correct: ", correctPredictions)
-print("incorrect: ", testingCount-correctPredictions)
+print("incorrect: ", len(testingMatrix.index)-correctPredictions)
 
 """attacks = 0
 correctAttacks = 0
@@ -125,8 +188,8 @@ for i in range(len(predictions)):
 
 
 
-print("\naccuracy = ", correctPredictions/testingCount)
-print("accuracy when assigning modal class: ", sum(testingLabels == 0)/testingCount)
+print("\naccuracy = ", correctPredictions/len(testingMatrix.index))
+print("accuracy when assigning modal class: ", sum(testingLabels == 0)/len(testingMatrix.index))
 
 #print("\ncorrect attacks: ", correctAttacks, " out of ", attacks)
 print("precision: ", precision_score(testingLabels, predictions))

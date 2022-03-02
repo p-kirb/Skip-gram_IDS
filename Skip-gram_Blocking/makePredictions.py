@@ -1,5 +1,7 @@
+from distutils.command.clean import clean
 import pandas as pd
 import math
+import time
 
 #import the observations dataset
 #for every observation, calculate the cosine similarity of system and the connection type being used
@@ -12,7 +14,15 @@ sentence = pd.read_csv("data/metadata.csv", header=None).to_numpy()
 
 embeddings = pd.read_csv("data/embeddings_matrix.csv", header=None).to_numpy()
 
-observations = pd.read_csv("data/cleaned_honeypot-with_attacks.csv")
+#observations is first 80% of clean samples + first 80% of malicious samples
+cleanSamples = pd.read_csv("data/skipgram_training_honeypot.csv")
+maliciousSamples = pd.read_csv("data/cleaned_honeypot-with_attacks.csv")
+maliciousSamples = maliciousSamples[maliciousSamples["Label"] == 1]
+maliciousSamples = maliciousSamples.head(round(0.8 * len(maliciousSamples.index)))
+
+observations = pd.concat([cleanSamples, maliciousSamples])
+
+
 
 connTypesStart = observations["IPIndex"].max() + 1          #connection types embeddings start immidiately after systems embeddings
 
@@ -48,7 +58,10 @@ print("cleaning data...")
 labels = observations['Label']
 observations = observations[['SrcAddr', 'connectionType', 'IPIndex', 'Label']]
 
+start = time.time()
 observations['Prediction'] = observations.apply(predict, axis=1)
+end = time.time()
+timeTaken = end - start
 
 observations[['Label', 'Prediction']].to_csv("data/predictions.csv", index=False)
 
@@ -68,7 +81,16 @@ for i in range(len(truths)):
         if(truths[i] == 1):
             correctAttacks = correctAttacks+1
 
-print("Accuracy: ", correct/len(truths))
-print("Precision: ", correctAttacks/attacks)
+acc = "Accuracy: " + str(correct/len(truths))
+prec = "\nPrecision: " + str(correctAttacks/attacks)
+sens = "\nSensitivity: " + str((correct-correctAttacks)/(len(truths)-attacks))
+
+print(acc)
+print(prec)
+print(sens)
+print("Time taken: ", timeTaken)
 
 
+f = open("data/skipgram_predictions_summary.txt", "w")
+f.write(acc + prec + sens)
+f.close

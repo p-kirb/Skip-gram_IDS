@@ -65,13 +65,7 @@ print("cleaning data...")
 #keeping only the relevant columns
 honeypotDF = honeypotDF[['SrcAddr', 'DstAddr', 'Dport', 'Proto', 'Label']]
 
-#TODO: decide what to do with this
-#removing all background observations
-#honeypotDF = honeypotDF[~honeypotDF.Label.str.contains("Background")]
-
-
-#TODO: align this with papers handling of NA values
-#fills all missing data with 0 currently
+#fills all missing data with 0
 honeypotDF.fillna("0", axis=0, inplace=True)
 
 #drops any observations with an IPv6 SrcAddr
@@ -83,12 +77,6 @@ honeypotDF = honeypotDF[~honeypotDF.SrcAddr.str.contains(":")]
 #honeypotDF = honeypotDF[honeypotDF["DstAddr"].str.contains("-")==False]
 #honeypotDF = honeypotDF[honeypotDF["Dport"].str.contains("-")==False]
 #honeypotDF = honeypotDF[honeypotDF["Proto"].str.contains("-")==False]
-
-
-
-
-
-
 
 
 #Sport gets any hex strings to standard ints
@@ -118,7 +106,9 @@ honeypotDF.to_csv("data/cleaned_honeypot-with_attacks.csv", index = False)
 
 #dropping rows with attacks (for training)
 honeypotDF = honeypotDF[honeypotDF["Label"] == 0]
-honeypotDF.to_csv("data/cleaned_honeypot.csv", index=False)
+#getting first 80%
+honeypotDF = honeypotDF.head(round(0.8 * len(honeypotDF.index)))
+honeypotDF.to_csv("data/skipgram_training_honeypot.csv", index=False)
 
 
 

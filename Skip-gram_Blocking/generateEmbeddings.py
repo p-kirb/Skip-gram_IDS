@@ -87,42 +87,36 @@ for s in range(systemsCount):
 
 print("\nTraining model...")
 
-embeddingsInitializer = keras.initializers.RandomUniform(minval=-1, maxval=1)
-denseInitializer = keras.initializers.RandomNormal()
 
 class Word2Vec(tf.keras.Model):
   def __init__(self, vocab_size, embedding_dim):
     super(Word2Vec, self).__init__()
-    self.target_embedding = keras.layers.Embedding(vocab_size,
+    self.word_embedding = keras.layers.Embedding(vocab_size,
                                       embedding_dim,
                                       name="w2v_embedding",
                                       embeddings_initializer="uniform",
                                       input_length=numNegSamples+1)
 
 
-    self.context_embedding = keras.layers.Embedding(vocab_size,
-                                       embedding_dim,
-                                       input_length=numNegSamples+1)
-
   def call(self, pair):
     target, context = pair
-    word_emb = self.target_embedding(target)
-    context_emb = self.target_embedding(context)
-    dots = tf.einsum('ikm, ikm-> ik', word_emb, context_emb)
+    target_emb = self.word_embedding(target)
+    context_emb = self.word_embedding(context)
+    dots = tf.einsum('ikm, ikm-> ik', target_emb, context_emb)
     cos = tf.math.l2_normalize(dots)
     #tf.print(dots)
     return cos
 
 
 model = Word2Vec(sentenceLength, embedding_dim)
-#loss is categorical cross entropy so provide training labels as one hot vectors
+
+#loss calculated across batch
 model.compile(optimizer='Adagrad', loss=keras.losses.LogCosh())#, metrics=['categorical_accuracy', 'accuracy'])
 
 
-#test start
 recordNo=0
 
-for e in range(180000):
+for e in range(90000):
     print("epoch: ", e)
     trainingTargets = []                        #each row is a target word represented as its integer index in "sentence"
     trainingContexts = []                       #each row is a list of context words (connection type) represented as their integer indeces in "sentence"
@@ -163,36 +157,20 @@ for e in range(180000):
             
 
 
-    #print("labels: ", labels)
     trainingTargets = np.array(trainingTargets)
-    #print("targets shape: ", trainingTargets.shape)
     trainingContexts = np.array(trainingContexts)
-    #print("Training targets: ", trainingTargets)
-    #print("contexts shape: ", trainingContexts.shape)
+
     labels = np.array(labels)
     BUFFER_SIZE = 10000
     dataset = tf.data.Dataset.from_tensor_slices(((trainingTargets, trainingContexts), labels))
     dataset = dataset.shuffle(BUFFER_SIZE).batch(batchSize*2, drop_remainder=False)
-    #print("dataset: ", dataset)
-    data = model.fit(dataset, epochs = 1)#batch_size = 16)
-
-#test end
-
-#data = model.fit(x=trainingTargets, y=trainingContexts, batch_size = batchSize, epochs = 1)
+    data = model.fit(dataset, epochs = 1)
 
 
-#predictions = model(trainingTargets, training=False)
 
 wordEmbeddings = model.get_layer("w2v_embedding").get_weights()[0]           #get_weights returns array containing 2 arrays - 1st one is kernel matrix, second is bias vector (i.e. bias of each node)
 
 pd.DataFrame(wordEmbeddings).to_csv("data/embeddings_matrix.csv", index=False, header=False)
 
-
-#hiddenEmbeddings = model.get_layer("hid").get_weights()[0]
-
-#pd.DataFrame(wordEmbeddings).to_csv("hiddenEmbeddings_matrix.csv", index=False, header=False)
-
-
-#print(predictions)
 
 print(model.summary())
