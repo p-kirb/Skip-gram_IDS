@@ -57,7 +57,6 @@ for name in filenames:
 honeypotDF = pd.concat(dfs, axis=0, ignore_index=True)
 
 print("count: ",len(honeypotDF.index))
-#honeypotDF = pd.read_csv(path)# nrows=10000)         #only using the first 20000 rows (for testing)
 
 
 print("cleaning data...")
@@ -70,13 +69,6 @@ honeypotDF.fillna("0", axis=0, inplace=True)
 
 #drops any observations with an IPv6 SrcAddr
 honeypotDF = honeypotDF[~honeypotDF.SrcAddr.str.contains(":")]
-
-
-#dropping rows with missing values
-#honeypotDF = honeypotDF[honeypotDF["SrcAddr"].str.contains("-")==False]
-#honeypotDF = honeypotDF[honeypotDF["DstAddr"].str.contains("-")==False]
-#honeypotDF = honeypotDF[honeypotDF["Dport"].str.contains("-")==False]
-#honeypotDF = honeypotDF[honeypotDF["Proto"].str.contains("-")==False]
 
 
 #Sport gets any hex strings to standard ints
@@ -119,9 +111,7 @@ print("Building words table...")
 #getting unique SrcAddr values in 2d array
 wordsTable =  honeypotDF[['SrcAddr']].drop_duplicates().values.tolist()
 
-#TODO: optimise maybe? takes a long time - can drop all columns apart from IPIndex and connectionType
-#loops over honeypotDF, adds the current rows connectionType to the array at the index specified by IPIndex
-#(builds the table used to feed data into network)
+
 for index, row in honeypotDF.iterrows():
     wordsTable[row['IPIndex']].append(row['connectionType'])
 

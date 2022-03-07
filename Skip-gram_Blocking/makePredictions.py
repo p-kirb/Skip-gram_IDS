@@ -1,4 +1,3 @@
-from distutils.command.clean import clean
 import pandas as pd
 import math
 import time
@@ -19,6 +18,13 @@ cleanSamples = pd.read_csv("data/skipgram_training_honeypot.csv")
 maliciousSamples = pd.read_csv("data/cleaned_honeypot-with_attacks.csv")
 maliciousSamples = maliciousSamples[maliciousSamples["Label"] == 1]
 maliciousSamples = maliciousSamples.head(round(0.8 * len(maliciousSamples.index)))
+
+#code section for testing skip-gram on 20% of records
+#cleanSamples = pd.read_csv("data/cleaned_honeypot-with_attacks.csv")
+#maliciousSamples = cleanSamples[cleanSamples["Label"] == 1]
+#maliciousSamples = maliciousSamples.tail(round(0.2 * len(maliciousSamples.index)))
+#cleanSamples = cleanSamples[cleanSamples["Label"] == 0]
+#cleanSamples = cleanSamples.tail(round(0.2 * len(cleanSamples.index)))
 
 observations = pd.concat([cleanSamples, maliciousSamples])
 

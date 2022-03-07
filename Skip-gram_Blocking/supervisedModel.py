@@ -1,10 +1,12 @@
 
+from socketserver import ThreadingMixIn
 import pandas as pd
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 
 from sklearn import tree
-from sklearn.metrics import precision_score
+from sklearn.naive_bayes import GaussianNB
+from sklearn import svm
 
 import gc
 import sys
@@ -82,56 +84,47 @@ honeypotDF = honeypotDF.fillna("0", axis=0)
 
 #print("total samples: ", len(honeypotDF.index))
 
-print("reached point 1")
 
 groundTruths = honeypotDF["Label"].tolist()
 honeypotDF = honeypotDF.drop(['attack_cat'], axis=1)          #removing attact types (information relates to label)
 
-print("reached point 2")
 
 #splitting into training and testing
-goodSamples = honeypotDF[honeypotDF["Label"] == 0]     #isolating benign samples
+goodSamples = honeypotDF[honeypotDF["Label"] == 0]     #isolating benign samples to get dataset to line up with labels produced
 malSamples = honeypotDF[honeypotDF["Label"] == 1]
 
 del honeypotDF
 gc.collect()
 
-print("reached point 3")
 
 goodSplitIndex = round(0.8 * len(goodSamples.index))
 malSplitIndex = round(0.8 * len(malSamples.index))
 
-print("reached point 4")
 
 trainingGood = goodSamples.head(goodSplitIndex)
 testingGood = goodSamples.tail(len(goodSamples.index) - goodSplitIndex)
 
-print("reached point 5")
 
 del goodSamples                 #cleanup
 
 trainingMal = malSamples.head(malSplitIndex)
 testingMal = malSamples.tail(len(malSamples.index) - malSplitIndex)
 
-print("reached point 6")
 
 del malSamples                  #cleanup
 gc.collect()
-print("reached point 7")
 
-trainingMatrix = pd.concat([trainingGood, trainingMal]).sample(frac=1)      #combines the 2 matrices and shuffles
+trainingMatrix = pd.concat([trainingGood, trainingMal])      #combines the 2 matrices
 
 del trainingGood, trainingMal
 gc.collect()
 
-print("reached point 8")
 
-testingMatrix = pd.concat([testingGood, testingMal]).sample(frac=1)
+testingMatrix = pd.concat([testingGood, testingMal])
 
 del testingGood, testingMal
 gc.collect()
 
-print("reached point 9")
 
 trainingMatrix = trainingMatrix.drop(['Label'], axis=1)          #removing labels from training matrix
 
@@ -156,16 +149,21 @@ testingMatrix = testingMatrix.drop(["Label"], axis=1)
 print("testing observations: ", len(testingMatrix.index))
 print("testing labels: ", len(testingLabels))
 
-name, obj = None, None
-for name, obj in locals().items():
-    print(name, ":\t\t\t", sys.getsizeof(obj))
+#name, obj = None, None
+#for name, obj in locals().items():
+#    print(name, ":\t\t\t", sys.getsizeof(obj))
 
 #training model
 print("training model")
 #model = KNeighborsClassifier(n_neighbors=10)
-#model.fit(trainingMatrix, trainingLabels)
-model = tree.DecisionTreeClassifier()
+
+#model = tree.DecisionTreeClassifier()
+
+model = GaussianNB()
+
+#model = svm.SVC()
 model.fit(trainingMatrix, trainingLabels)
+
 
 print("predicting")
 #predicting
@@ -178,19 +176,20 @@ correctPredictions = sum(predictions == testingLabels)
 print("correct: ", correctPredictions)
 print("incorrect: ", len(testingMatrix.index)-correctPredictions)
 
-"""attacks = 0
+attacks = 0
 correctAttacks = 0
 for i in range(len(predictions)):
     if(testingLabels[i] == 1):
         attacks = attacks + 1
         if(testingLabels[i] == predictions[i]):
-            correctAttacks = correctAttacks + 1"""
+            correctAttacks = correctAttacks + 1
 
 
 
 print("\naccuracy = ", correctPredictions/len(testingMatrix.index))
-print("accuracy when assigning modal class: ", sum(testingLabels == 0)/len(testingMatrix.index))
+#print("accuracy when assigning modal class: ", sum(testingLabels == 0)/len(testingMatrix.index))
 
 #print("\ncorrect attacks: ", correctAttacks, " out of ", attacks)
-print("precision: ", precision_score(testingLabels, predictions))
+print("precision: ", correctAttacks/attacks)
+print("sensitivity: ", (correctPredictions - correctAttacks) / (len(testingMatrix.index) - attacks))
 

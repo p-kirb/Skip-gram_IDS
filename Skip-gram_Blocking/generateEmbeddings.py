@@ -45,6 +45,7 @@ batchSize = 8                   #optimum from paper
 numSkips = 2                    #optimum from paper
 embedding_dim = 4
 numNegSamples = 4
+epochNumber = 90000
 
 print("program start: generateEmbeddings")
 
@@ -104,19 +105,18 @@ class Word2Vec(tf.keras.Model):
     context_emb = self.word_embedding(context)
     dots = tf.einsum('ikm, ikm-> ik', target_emb, context_emb)
     cos = tf.math.l2_normalize(dots)
-    #tf.print(dots)
     return cos
 
 
 model = Word2Vec(sentenceLength, embedding_dim)
 
 #loss calculated across batch
-model.compile(optimizer='Adagrad', loss=keras.losses.LogCosh())#, metrics=['categorical_accuracy', 'accuracy'])
+model.compile(loss=keras.losses.MeanSquaredError())
 
 
 recordNo=0
 
-for e in range(90000):
+for e in range(epochNumber):
     print("epoch: ", e)
     trainingTargets = []                        #each row is a target word represented as its integer index in "sentence"
     trainingContexts = []                       #each row is a list of context words (connection type) represented as their integer indeces in "sentence"
