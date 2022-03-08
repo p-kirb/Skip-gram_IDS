@@ -42,7 +42,7 @@ def cleanHex(dataItem):
 
 print("program start: supervisedModel")
 
-path = "../../UNSW-NB15 - CSV Files/UNSW-NB15_"
+path = "../../UNSW-NB15 - CSV Files/UNSW-NB15_"                             #reding in raw, unprocessed data
 
 filenames = [path+"1.csv", path+"2.csv", path+"3.csv", path+"4.csv"]
 
@@ -120,7 +120,7 @@ del trainingGood, trainingMal
 gc.collect()
 
 
-testingMatrix = pd.concat([testingGood, testingMal])
+testingMatrix = pd.concat([testingGood, testingMal]).sample(frac=1) #builds and shuffles testing matrix
 
 del testingGood, testingMal
 gc.collect()
