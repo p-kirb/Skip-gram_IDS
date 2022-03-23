@@ -88,8 +88,8 @@ for i in range(len(truths)):
             correctAttacks = correctAttacks+1
 
 acc = "Accuracy: " + str(correct/len(truths))
-prec = "\nPrecision: " + str(correctAttacks/attacks)
-sens = "\nSensitivity: " + str((correct-correctAttacks)/(len(truths)-attacks))
+sens = "\nSensitiviity: " + str(correctAttacks/attacks)
+prec = "\nPrecision: " + str((correct-correctAttacks)/(len(truths)-attacks))
 
 print(acc)
 print(prec)

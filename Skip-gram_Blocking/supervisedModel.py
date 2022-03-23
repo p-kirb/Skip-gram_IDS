@@ -7,9 +7,15 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn import tree
 from sklearn.naive_bayes import GaussianNB
 from sklearn import svm
+from sklearn.metrics import confusion_matrix
+
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 import gc
 import sys
+import time
+import json
 
 #read in whole dataset.
 #read in the skipgram predicted labels.
@@ -77,16 +83,13 @@ honeypotDF['state'] = honeypotDF['state'].factorize()[0]
 honeypotDF['service'] = honeypotDF['service'].factorize()[0]
 
 honeypotDF = honeypotDF.replace(r"^$", np.NaN, regex=True)        #replace empty strings with 0
-for column in honeypotDF:
-    honeypotDF[column] = pd.to_numeric(honeypotDF[column], errors='coerce')
 
-honeypotDF = honeypotDF.fillna("0", axis=0)
 
 #print("total samples: ", len(honeypotDF.index))
 
 
 groundTruths = honeypotDF["Label"].tolist()
-honeypotDF = honeypotDF.drop(['attack_cat'], axis=1)          #removing attact types (information relates to label)
+#honeypotDF = honeypotDF.drop(['attack_cat'], axis=1)          #removing attact types (information relates to label)
 
 
 #splitting into training and testing
@@ -126,7 +129,8 @@ del testingGood, testingMal
 gc.collect()
 
 
-trainingMatrix = trainingMatrix.drop(['Label'], axis=1)          #removing labels from training matrix
+trainingMatrix = trainingMatrix.drop(['attack_cat'], axis=1)            #removing attact types (information relates to label)
+trainingMatrix = trainingMatrix.drop(['Label'], axis=1)         #removing labels from training matrix
 
 
 
@@ -139,15 +143,33 @@ gc.collect()
 
 
 print("training observations: ", len(trainingMatrix.index))
-print("training labels: ", len(trainingLabels))
-#print("labels: ", len(trainingLabels))
+#print("training labels: ", len(trainingLabels))
 
 
 testingLabels = testingMatrix["Label"].tolist()
+attackTypes = testingMatrix["attack_cat"].astype(str).tolist()
 testingMatrix = testingMatrix.drop(["Label"], axis=1)
+testingMatrix = testingMatrix.drop(["attack_cat"], axis=1)
 
 print("testing observations: ", len(testingMatrix.index))
-print("testing labels: ", len(testingLabels))
+
+
+for column in trainingMatrix:
+    trainingMatrix[column] = pd.to_numeric(trainingMatrix[column], errors='coerce')
+
+trainingMatrix = trainingMatrix.fillna("0", axis=0)
+
+for column in testingMatrix:
+    testingMatrix[column] = pd.to_numeric(testingMatrix[column], errors='coerce')
+
+testingMatrix = testingMatrix.fillna("0", axis=0)
+
+
+#print("testing labels: ", len(testingLabels))
+
+#for i in attackTypes:
+#    if i != '0':
+#        print(i)
 
 #name, obj = None, None
 #for name, obj in locals().items():
@@ -167,7 +189,9 @@ model.fit(trainingMatrix, trainingLabels)
 
 print("predicting")
 #predicting
+startTime = time.time()
 predictions = model.predict(testingMatrix)
+endTime = time.time()
 
 
 #determining accuracy
@@ -175,21 +199,45 @@ correctPredictions = sum(predictions == testingLabels)
 #correctPredictions = sum(predictions == "Background")           #accuracy if all observations were just labeled as background
 print("correct: ", correctPredictions)
 print("incorrect: ", len(testingMatrix.index)-correctPredictions)
+print("Time taken: ", endTime-startTime)
+
+
+totalAttacksPerType = dict.fromkeys(attackTypes, 0)             #dictionaries for attack types count (initialised to 0)
+correctAttacksPerType = dict.fromkeys(attackTypes, 0)
 
 attacks = 0
 correctAttacks = 0
 for i in range(len(predictions)):
     if(testingLabels[i] == 1):
         attacks = attacks + 1
+        totalAttacksPerType[attackTypes[i]] += 1
         if(testingLabels[i] == predictions[i]):
             correctAttacks = correctAttacks + 1
+            correctAttacksPerType[attackTypes[i]] += 1
 
+#with open("supervised_model_attacks.txt", 'w') as f:
+#    f.write("Total:\n")
+#    f.write(json.dumps(totalAttacksPerType))
+#    f.write("\nCorrect:\n")
+#    f.write(json.dumps(correctAttacksPerType))
 
+print("Correct attacks: ", correctAttacks)
+print("Correct normal: ", correctPredictions-correctAttacks)
 
 print("\naccuracy = ", correctPredictions/len(testingMatrix.index))
 #print("accuracy when assigning modal class: ", sum(testingLabels == 0)/len(testingMatrix.index))
 
 #print("\ncorrect attacks: ", correctAttacks, " out of ", attacks)
-print("precision: ", correctAttacks/attacks)
-print("sensitivity: ", (correctPredictions - correctAttacks) / (len(testingMatrix.index) - attacks))
+print("sensitivity: ", correctAttacks/attacks)
+print("precision: ", (correctPredictions - correctAttacks) / (len(testingMatrix.index) - attacks))
 
+confusion = confusion_matrix(testingLabels, predictions)
+
+g = sns.heatmap(confusion, annot=True, fmt=".6g", cmap='Blues')
+g.set_title("SGE using GNB confusion matrix")
+g.set_xlabel("Predictions")
+g.set_ylabel("Actual Labels")
+g.xaxis.set_ticklabels(["Normal", "Attack"])
+g.yaxis.set_ticklabels(["Normal", "Attack"])
+
+plt.show()
