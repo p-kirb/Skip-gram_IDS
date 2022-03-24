@@ -1,2 +1,2 @@
-# SCC300HoneypotProject
-Repository for the code developed for SCC300 Honeypots Project
+# Skip-gram IDS
+Repository for the code developed for testing of a skip-gram based anomaly detector.
