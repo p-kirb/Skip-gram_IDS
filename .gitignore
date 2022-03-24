@@ -1,5 +1,2 @@
 *.txt
 *.csv
-*.bz2
-*.dat
-trainModel.py
